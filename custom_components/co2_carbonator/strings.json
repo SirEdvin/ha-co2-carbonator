@@ -3,29 +3,19 @@
     "step": {
       "user": {
         "title": "CO₂ Carbonator",
-        "description": "Track manual carbonated bottle fills from one NFC tag and tank replacement from a Home Assistant button.",
+        "description": "Create a manual CO₂ tank tracking device. Your own automations can call the integration services/actions when NFC scans or other events happen.",
         "data": {
           "name": "Name",
-          "tag_id": "NFC tag UUID",
-          "scan_cooldown_seconds": "Duplicate scan cooldown seconds",
           "expected_bottles_per_tank": "Expected bottles per tank"
         }
       }
-    },
-    "error": {
-      "required": "This field is required."
-    },
-    "abort": {
-      "already_configured": "This NFC tag is already configured."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "CO₂ Carbonator Options",
-        "data": {
-          "scan_cooldown_seconds": "Duplicate scan cooldown seconds"
-        }
+        "description": "There are no options yet. Use the device entities and services/actions to update tracking state."
       }
     }
   }

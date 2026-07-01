@@ -32,8 +32,4 @@ class Co2CarbonatorEntity(Entity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        return {
-            "tank_id": self.runtime.state.tank_id,
-            "tank_started": self.runtime.state.tank_started,
-            "last_bottle_filled": self.runtime.state.last_bottle_filled,
-        }
+        return self.runtime.state.snapshot()

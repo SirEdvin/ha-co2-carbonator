@@ -1,27 +1,22 @@
 # CO₂ Carbonator for Home Assistant
 
-A Home Assistant custom integration for tracking a manual water carbonator with one shared NFC tag.
+A small Home Assistant custom integration that provides a clean device/entity model for tracking a manual water carbonator.
 
-Scan the configured NFC tag after filling a bottle. Press **Replace Tank** when you install a new CO₂ tank. The integration exposes one Home Assistant device with sensors, buttons, and a configurable expected-bottles-per-tank number.
+The integration deliberately does **not** know about NFC tags, scanners, cooldowns, or any other trigger source. It exposes services/actions and buttons. Your own Home Assistant automations decide when to call them — for example, after an NFC scan.
 
-## Features
+## Scope
 
-- One NFC tag = one `bottle filled` event.
-- Duplicate-scan cooldown.
-- Current tank bottle count.
-- Lifetime bottle count.
-- Completed tank count.
-- Last completed tank bottle count.
-- Average bottles per completed tank.
-- Expected bottles per tank setting.
-- Estimated bottles remaining.
-- Tank usage percent.
-- Tank age and bottles/day sensors.
-- Manual **Replace Tank** and **Initialize Current Tank** buttons.
-- Persistent state stored in Home Assistant `.storage`.
-- Fires Home Assistant events for custom automations:
-  - `co2_carbonator_bottle_filled`
-  - `co2_carbonator_tank_replaced`
+This integration provides:
+
+- One Home Assistant device representing your manual CO₂ carbonator.
+- Entities for current tank tracking and summary metrics.
+- Services/actions for recording bottles and replacing/initializing tanks.
+- Buttons for manual dashboard use.
+- No NFC tag handling.
+- No cooldown logic.
+- No custom `.storage` database.
+
+State is represented by Home Assistant entities. After restart, the integration restores its runtime values from the last HA entity state attributes when available.
 
 ## Entities
 
@@ -39,13 +34,80 @@ sensor.co2_carbonator_current_tank_age
 sensor.co2_carbonator_bottles_per_day_current_tank
 sensor.co2_carbonator_current_tank_id
 sensor.co2_carbonator_tank_started
-sensor.co2_carbonator_last_bottle_filled
+sensor.co2_carbonator_last_bottle_recorded
 number.co2_carbonator_expected_bottles_per_tank
+button.co2_carbonator_record_bottle
 button.co2_carbonator_replace_tank
 button.co2_carbonator_initialize_current_tank
 ```
 
 Exact entity IDs may vary based on your integration/device name.
+
+## Services/actions
+
+### `co2_carbonator.record_bottle`
+
+Record one or more carbonated bottles for the current tank.
+
+```yaml
+action: co2_carbonator.record_bottle
+data:
+  amount: 1
+```
+
+If you have multiple CO₂ Carbonator devices, pass `config_entry_id`:
+
+```yaml
+action: co2_carbonator.record_bottle
+data:
+  config_entry_id: "01JABCDEF1234567890"
+  amount: 1
+```
+
+### `co2_carbonator.replace_tank`
+
+Close the current tank session and start a new tank. This increments completed-tank metrics and resets current tank bottles to `0`.
+
+```yaml
+action: co2_carbonator.replace_tank
+```
+
+Optional explicit new tank ID:
+
+```yaml
+action: co2_carbonator.replace_tank
+data:
+  tank_id: "CO2-2026-06-27"
+```
+
+### `co2_carbonator.initialize_tank`
+
+Start or reset the current tank without recording the previous tank as completed. Useful after first setup or when correcting state.
+
+```yaml
+action: co2_carbonator.initialize_tank
+data:
+  tank_id: "CO2-2026-06-27"
+  current_bottles: 0
+```
+
+## Example NFC automation
+
+This integration does not handle NFC directly. Use a Home Assistant automation like this:
+
+```yaml
+alias: CO₂ - Bottle recorded from NFC
+mode: single
+trigger:
+  - platform: tag
+    tag_id: YOUR_NFC_TAG_UUID
+action:
+  - action: co2_carbonator.record_bottle
+    data:
+      amount: 1
+```
+
+If you want cooldown/debounce behavior, implement it in this automation, for example with a timer helper or automation conditions.
 
 ## Installation
 
@@ -88,32 +150,14 @@ The setup form asks for:
 | Field | Description |
 |---|---|
 | Name | Device/integration name, e.g. `CO₂ Carbonator` |
-| NFC tag UUID | The Home Assistant tag UUID to treat as “one bottle filled” |
-| Duplicate scan cooldown seconds | Default `45`; prevents accidental double-counting |
 | Expected bottles per tank | Default `60`; used for remaining/usage estimates |
-
-### Finding your NFC tag UUID
-
-In Home Assistant, go to **Settings → Tags** and select/create the tag you want to use.
-
-If you only see the tag entity ID, convert underscores back to hyphens. For example:
-
-```text
-tag.bb0f4609_8d97_4125_818a_d144e919d659
-```
-
-becomes:
-
-```text
-bb0f4609-8d97-4125-818a-d144e919d659
-```
 
 ## Usage
 
 1. Add the integration.
 2. Press **Initialize Current Tank** once if you want to start from a clean current tank.
-3. After carbonating/filling a bottle, scan the configured NFC tag.
-4. When replacing the CO₂ tank, press **Replace Tank**.
+3. Call `co2_carbonator.record_bottle` from your NFC automation or press **Record Bottle** manually.
+4. Press **Replace Tank** or call `co2_carbonator.replace_tank` when installing a new CO₂ tank.
 
 ## Suggested dashboard card
 
@@ -127,8 +171,8 @@ entities:
     name: Tank started
   - entity: sensor.co2_carbonator_current_tank_bottles
     name: Bottles on current tank
-  - entity: sensor.co2_carbonator_last_bottle_filled
-    name: Last bottle filled
+  - entity: sensor.co2_carbonator_last_bottle_recorded
+    name: Last bottle recorded
   - entity: sensor.co2_carbonator_current_tank_age
     name: Tank age
   - entity: sensor.co2_carbonator_bottles_per_day_current_tank
@@ -143,19 +187,18 @@ entities:
     name: Last completed tank bottles
   - entity: sensor.co2_carbonator_average_bottles_per_completed_tank
     name: Average bottles/tank
+  - entity: button.co2_carbonator_record_bottle
+    name: Record bottle
   - entity: button.co2_carbonator_replace_tank
     name: Replace CO₂ tank
 ```
 
 ## Events
 
-### `co2_carbonator_bottle_filled`
+The integration fires events for optional downstream automations:
 
-Fired after a matching NFC scan is accepted.
-
-### `co2_carbonator_tank_replaced`
-
-Fired when the replace-tank button is pressed.
+- `co2_carbonator_bottle_recorded`
+- `co2_carbonator_tank_replaced`
 
 ## Development
 
@@ -166,7 +209,3 @@ python3 -m py_compile custom_components/co2_carbonator/*.py
 ```
 
 This repository intentionally has no runtime dependencies outside Home Assistant.
-
-## Notes
-
-This is a local/manual tracker. It does not measure CO₂ mass or pressure directly; it counts accepted bottle-fill events and records completed tank sessions.

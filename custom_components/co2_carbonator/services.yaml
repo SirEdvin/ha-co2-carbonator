@@ -1,0 +1,64 @@
+record_bottle:
+  name: Record bottle
+  description: Record one or more carbonated bottles for the current CO₂ tank.
+  fields:
+    config_entry_id:
+      name: Config entry ID
+      description: Optional. Required only when multiple CO₂ Carbonator devices are configured.
+      example: "01JABCDEF1234567890"
+      selector:
+        text:
+    amount:
+      name: Amount
+      description: Number of bottles to add.
+      default: 1
+      example: 1
+      selector:
+        number:
+          min: 1
+          max: 100
+          mode: box
+
+replace_tank:
+  name: Replace tank
+  description: Close the current CO₂ tank session and start a new tank.
+  fields:
+    config_entry_id:
+      name: Config entry ID
+      description: Optional. Required only when multiple CO₂ Carbonator devices are configured.
+      example: "01JABCDEF1234567890"
+      selector:
+        text:
+    tank_id:
+      name: New tank ID
+      description: Optional ID for the new tank. If omitted, one is generated automatically.
+      example: "CO2-2026-06-27-1530"
+      selector:
+        text:
+
+initialize_tank:
+  name: Initialize tank
+  description: Start or reset the current tank without recording the previous tank as completed.
+  fields:
+    config_entry_id:
+      name: Config entry ID
+      description: Optional. Required only when multiple CO₂ Carbonator devices are configured.
+      example: "01JABCDEF1234567890"
+      selector:
+        text:
+    tank_id:
+      name: Tank ID
+      description: Optional ID for the current tank. If omitted, one is generated automatically.
+      example: "CO2-2026-06-27-1530"
+      selector:
+        text:
+    current_bottles:
+      name: Current bottles
+      description: Initial bottle count for the current tank.
+      default: 0
+      example: 0
+      selector:
+        number:
+          min: 0
+          max: 10000
+          mode: box
