@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity
 
@@ -10,6 +11,7 @@ from . import UPDATE_SIGNAL, CarbonatorRuntime
 
 class Co2CarbonatorEntity(Entity):
     _attr_has_entity_name = True
+    _attr_should_poll = False
 
     def __init__(self, runtime: CarbonatorRuntime, key: str, name: str) -> None:
         self.runtime = runtime
@@ -26,6 +28,7 @@ class Co2CarbonatorEntity(Entity):
             )
         )
 
+    @callback
     def _handle_update_signal(self, entry_id: str) -> None:
         if entry_id == self.runtime.entry.entry_id:
             self.async_write_ha_state()
