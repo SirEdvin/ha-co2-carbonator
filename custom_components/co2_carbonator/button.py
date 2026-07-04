@@ -19,6 +19,7 @@ class Co2ButtonDescription(ButtonEntityDescription):
 
 BUTTONS: tuple[Co2ButtonDescription, ...] = (
     Co2ButtonDescription(key="record_bottle", name="Record Bottle", icon="mdi:bottle-soda-classic-outline", press_fn=lambda r: r.async_record_bottle()),
+    Co2ButtonDescription(key="unrecord_bottle", name="Unrecord Bottle", icon="mdi:bottle-soda-classic", press_fn=lambda r: r.async_unrecord_bottle()),
     Co2ButtonDescription(key="replace_tank", name="Replace Tank", icon="mdi:gas-cylinder", press_fn=lambda r: r.async_replace_tank()),
     Co2ButtonDescription(key="initialize_current_tank", name="Initialize Current Tank", icon="mdi:restart", press_fn=lambda r: r.async_initialize_tank()),
 )

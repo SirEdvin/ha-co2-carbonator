@@ -10,7 +10,7 @@ This integration provides:
 
 - One Home Assistant device representing your manual CO₂ carbonator.
 - Entities for current tank tracking and summary metrics.
-- Services/actions for recording bottles and replacing/initializing tanks.
+- Services/actions for recording bottles, correcting bottle records, and replacing/initializing tanks.
 - Buttons for manual dashboard use.
 - No NFC tag handling.
 - No cooldown logic.
@@ -37,6 +37,7 @@ sensor.co2_carbonator_tank_started
 sensor.co2_carbonator_last_bottle_recorded
 number.co2_carbonator_expected_bottles_per_tank
 button.co2_carbonator_record_bottle
+button.co2_carbonator_unrecord_bottle
 button.co2_carbonator_replace_tank
 button.co2_carbonator_initialize_current_tank
 ```
@@ -61,6 +62,18 @@ If you have multiple CO₂ Carbonator devices, pass `config_entry_id`:
 action: co2_carbonator.record_bottle
 data:
   config_entry_id: "01JABCDEF1234567890"
+  amount: 1
+```
+
+### `co2_carbonator.unrecord_bottle`
+
+Subtract one or more bottles from the current tank and lifetime counts. The integration removes only bottles that still exist on the current tank and clamps counts at `0`, so this action is safe to use when correcting mistakes.
+
+This does not change `Last Bottle Recorded`; that timestamp remains the time of the last positive bottle record. The integration fires `co2_carbonator_bottle_unrecorded` for downstream correction automations.
+
+```yaml
+action: co2_carbonator.unrecord_bottle
+data:
   amount: 1
 ```
 
@@ -157,7 +170,8 @@ The setup form asks for:
 1. Add the integration.
 2. Press **Initialize Current Tank** once if you want to start from a clean current tank.
 3. Call `co2_carbonator.record_bottle` from your NFC automation or press **Record Bottle** manually.
-4. Press **Replace Tank** or call `co2_carbonator.replace_tank` when installing a new CO₂ tank.
+4. Call `co2_carbonator.unrecord_bottle` or press **Unrecord Bottle** to correct accidental records.
+5. Press **Replace Tank** or call `co2_carbonator.replace_tank` when installing a new CO₂ tank.
 
 ## Suggested dashboard card
 
@@ -189,6 +203,8 @@ entities:
     name: Average bottles/tank
   - entity: button.co2_carbonator_record_bottle
     name: Record bottle
+  - entity: button.co2_carbonator_unrecord_bottle
+    name: Unrecord bottle
   - entity: button.co2_carbonator_replace_tank
     name: Replace CO₂ tank
 ```
@@ -198,6 +214,7 @@ entities:
 The integration fires events for optional downstream automations:
 
 - `co2_carbonator_bottle_recorded`
+- `co2_carbonator_bottle_unrecorded`
 - `co2_carbonator_tank_replaced`
 
 ## Development

@@ -23,11 +23,13 @@ from .const import (
     DEFAULT_EXPECTED_BOTTLES_PER_TANK,
     DOMAIN,
     EVENT_BOTTLE_RECORDED,
+    EVENT_BOTTLE_UNRECORDED,
     EVENT_TANK_REPLACED,
     PLATFORMS,
     SERVICE_INITIALIZE_TANK,
     SERVICE_RECORD_BOTTLE,
     SERVICE_REPLACE_TANK,
+    SERVICE_UNRECORD_BOTTLE,
 )
 
 UPDATE_SIGNAL = f"{DOMAIN}_updated"
@@ -124,7 +126,7 @@ class CarbonatorRuntime:
             "name": self.name,
             "manufacturer": "Local Home Assistant",
             "model": "Manual CO₂ carbonator tracker",
-            "sw_version": "0.2.0",
+            "sw_version": "0.1.0",
         }
 
     def restore_once(self, data: dict[str, Any]) -> None:
@@ -149,6 +151,27 @@ class CarbonatorRuntime:
                 "amount": amount,
                 "bottles_current_tank": self.state.bottles_current_tank,
                 "recorded_at": now,
+            },
+        )
+        self.async_write_updates()
+
+    async def async_unrecord_bottle(self, amount: int = 1) -> None:
+        amount = int(amount)
+        if amount < 1:
+            raise HomeAssistantError("amount must be at least 1")
+        removed = min(amount, self.state.bottles_current_tank, self.state.bottles_lifetime)
+        self.state.bottles_current_tank -= removed
+        self.state.bottles_lifetime -= removed
+        self.hass.bus.async_fire(
+            EVENT_BOTTLE_UNRECORDED,
+            {
+                "config_entry_id": self.entry.entry_id,
+                "tank_id": self.state.tank_id,
+                "amount": amount,
+                "removed": removed,
+                "bottles_current_tank": self.state.bottles_current_tank,
+                "bottles_lifetime": self.state.bottles_lifetime,
+                "unrecorded_at": _now_iso(),
             },
         )
         self.async_write_updates()
@@ -242,6 +265,10 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         runtime = _get_runtime(hass, call.data.get(ATTR_CONFIG_ENTRY_ID))
         await runtime.async_record_bottle(call.data.get(ATTR_AMOUNT, 1))
 
+    async def unrecord_bottle(call: ServiceCall) -> None:
+        runtime = _get_runtime(hass, call.data.get(ATTR_CONFIG_ENTRY_ID))
+        await runtime.async_unrecord_bottle(call.data.get(ATTR_AMOUNT, 1))
+
     async def replace_tank(call: ServiceCall) -> None:
         runtime = _get_runtime(hass, call.data.get(ATTR_CONFIG_ENTRY_ID))
         await runtime.async_replace_tank(call.data.get(ATTR_TANK_ID))
@@ -257,6 +284,17 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         DOMAIN,
         SERVICE_RECORD_BOTTLE,
         record_bottle,
+        schema=vol.Schema(
+            {
+                vol.Optional(ATTR_CONFIG_ENTRY_ID): str,
+                vol.Optional(ATTR_AMOUNT, default=1): vol.All(vol.Coerce(int), vol.Range(min=1, max=100)),
+            }
+        ),
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_UNRECORD_BOTTLE,
+        unrecord_bottle,
         schema=vol.Schema(
             {
                 vol.Optional(ATTR_CONFIG_ENTRY_ID): str,
